@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T1 · HMI Data Logger Inteligente</title>
+  <style>
+    :root {
+      --bg-base: #0b0f14;
+      --bg-panel: #121821;
+      --bg-panel-alt: #18212d;
+      --bg-input: #0d131a;
+      --border: #253244;
+      --border-focus: #38bdf8;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.18);
+      --ok: #10b981;
+      --ok-bg: rgba(16, 185, 129, 0.14);
+      --warn: #f59e0b;
+      --warn-bg: rgba(245, 158, 11, 0.14);
+      --err: #ef4444;
+      --err-bg: rgba(239, 68, 68, 0.14);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--sans);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER INDUSTRIAL */
+    header {
+      background: linear-gradient(180deg, #131b26 0%, #0e141c 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-badge {
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #f8fafc;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-input);
+      padding: 0.3rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.55rem 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .tab-btn:hover { color: var(--text-main); }
+
+    .tab-btn.active {
+      background: var(--bg-panel-alt);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      flex: 1;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* GRID & CARDS */
+    .grid-top {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .grid-kpis {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-top, .grid-main { grid-template-columns: 1fr; }
+      .grid-kpis { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      .grid-kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.15rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* FORMULARIOS Y CONTROLES */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+    }
+
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    input[type="password"],
+    input[type="url"],
+    input[type="text"] {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 0.6rem 0.75rem;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: var(--border-focus); }
+
+    .validation-msg {
+      font-size: 0.75rem;
+      min-height: 1.1rem;
+      font-family: var(--mono);
+    }
+
+    .security-banner {
+      margin-top: 0.75rem;
+      background: var(--warn-bg);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+      padding: 0.65rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+    }
+
+    /* SLIDER & BOTONES */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 0.6rem 0 1rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .interval-pill {
+      font-family: var(--mono);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 72px;
+      text-align: center;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    button.btn {
+      border: 1px solid var(--border);
+      background: var(--bg-panel-alt);
+      color: var(--text-main);
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      transition: all 0.15s ease;
+    }
+
+    button.btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    button.btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    button.btn-primary:hover:not(:disabled) { background: #0369a1; }
+
+    button.btn-warn {
+      background: rgba(245, 158, 11, 0.18);
+      border-color: var(--warn);
+      color: #fbbf24;
+    }
+
+    button.btn-ai {
+      background: linear-gradient(135deg, #0f766e 0%, #0369a1 100%);
+      border-color: #2dd4bf;
+      color: #fff;
+    }
+
+    /* KPIS */
+    .kpi {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 0.9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .kpi-val {
+      font-family: var(--mono);
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .kpi-sub {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      margin-top: 0.25rem;
+      font-family: var(--mono);
+    }
+
+    .val-ok { color: var(--ok); }
+    .val-warn { color: var(--warn); }
+    .val-err { color: var(--err); }
+    .val-accent { color: var(--accent); }
+
+    /* INDICADORES DE ESTADO */
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-family: var(--mono);
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .badge.ok { background: var(--ok-bg); border-color: rgba(16,185,129,0.4); color: #6ee7b7; }
+    .badge.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+
+    .badge.warn { background: var(--warn-bg); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+    .badge.warn .dot { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+    .badge.err { background: var(--err-bg); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+    .badge.err .dot { background: var(--err); box-shadow: 0 0 8px var(--err); }
+
+    /* CANVAS CHART */
+    .chart-wrap {
+      width: 100%;
+      height: 250px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      position: relative;
+    }
+
+    canvas { width: 100%; height: 100%; display: block; }
+
+    /* COLA Y LOGS */
+    .queue-list {
+      max-height: 250px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .queue-item {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      gap: 0.5rem;
+    }
+
+    /* TABLA HISTORIAL SHEETS */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 330px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      background: var(--bg-panel-alt);
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      position: sticky;
+      top: 0;
+    }
+
+    td { font-family: var(--mono); font-size: 0.79rem; }
+    tr:hover td { background: rgba(56, 189, 248, 0.04); }
+
+    /* PANEL ANÁLISIS IA */
+    .ai-output {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      min-height: 130px;
+      color: #e2e8f0;
+    }
+
+    /* PESTANA 2: DOCUMENTACIÓN Y CODE.GS */
+    .doc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 1000px) {
+      .doc-grid { grid-template-columns: 1fr; }
+    }
+
+    .doc-section h2 {
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin: 1rem 0 0.45rem;
+    }
+
+    .doc-section h2:first-child { margin-top: 0; }
+
+    .doc-section p, .doc-section li {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .doc-section ul, .doc-section ol {
+      padding-left: 1.25rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .doc-section strong { color: var(--text-main); }
+
+    pre.code-box {
+      background: #070a0e;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      overflow-x: auto;
+      max-height: 680px;
+      line-height: 1.45;
+    }
+
+    .alert-box {
+      background: var(--err-bg);
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fecaca;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      margin: 0.75rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">T1 · HMI</div>
+      <div>
+        <h1>HMI Data Logger Inteligente</h1>
+        <span>Telemetría Térmica · Cola Secuencial · Google Sheets & OpenAI</span>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span id="badgeOp" class="badge"><span class="dot"></span>DETENIDO</span>
+      <span id="badgeConn" class="badge"><span class="dot"></span>SIN VALIDAR</span>
+      <span id="badgeErr" class="badge ok"><span class="dot"></span>0 ERRORES</span>
+    </div>
+
+    <nav class="tabs" aria-label="Navegación principal">
+      <button class="tab-btn active" data-tab="tab-demo">1. Demostración</button>
+      <button class="tab-btn" data-tab="tab-build">2. Crear artefacto</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- =========================================================
+         PESTAÑA 1: DEMOSTRACIÓN OPERATIVA
+         ========================================================= -->
+    <section id="tab-demo" class="tab-panel active">
+
+      <!-- CONFIGURACIÓN Y CONTROL DE GENERACIÓN -->
+      <div class="grid-top">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">1. Credenciales y Enlace Backend (Obligatorio)</span>
+            <span id="configStatusText" style="font-family:var(--mono);font-size:0.75rem;color:var(--warn);">PENDIENTE</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="apiKeyInput">OpenAI API Key (sk-...)</label>
+              <input type="password" id="apiKeyInput" placeholder="sk-proj-..." autocomplete="off" />
+              <span id="apiKeyMsg" class="validation-msg">Requerida para habilitar operaciones.</span>
+            </div>
+
+            <div class="field">
+              <label for="scriptUrlInput">URL Web App Google Apps Script (/exec)</label>
+              <input type="url" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" />
+              <span id="urlMsg" class="validation-msg">Debe terminar en /exec sobre HTTPS.</span>
+            </div>
+          </div>
+
+          <div class="security-banner" role="alert">
+            <span>⚠️</span>
+            <div>
+              <strong>Advertencia de seguridad:</strong> Ninguna clave se almacena en <code>localStorage</code> ni en el código fuente. Sin embargo, toda API Key introducida en el navegador viaja en la memoria de sesión y puede quedar expuesta en herramientas de red o extensiones del cliente. En entornos productivos, configure la clave exclusivamente como <em>Script Property</em> en el servidor.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">2. Generador Automático & Cola Secuencial</span>
+            <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text-muted);">RANGO: 20.0–40.0 °C</span>
+          </div>
+
+          <label for="intervalSlider">Intervalo de muestreo automático (20 a 60 segundos):</label>
+          <div class="slider-row">
+            <input type="range" id="intervalSlider" min="20" max="60" step="1" value="20" />
+            <div class="interval-pill"><span id="intervalLabel">20</span> s</div>
+          </div>
+
+          <div class="btn-group">
+            <button id="btnStart" class="btn btn-primary" disabled>▶ Iniciar</button>
+            <button id="btnPause" class="btn btn-warn" disabled>⏸ Pausar</button>
+            <button id="btnSync" class="btn" disabled>↻ Consultar Sheets</button>
+            <button id="btnAnalyze" class="btn btn-ai" disabled>✦ Analizar con OpenAI</button>
+          </div>
+          <p style="font-size:0.76rem;color:var(--text-dim);margin-top:0.7rem;">
+            El temporizador genera una muestra cada <strong>t</strong> segundos sin bloquearse por la latencia de Google Sheets. Los envíos se despachan uno a uno desde la cola FIFO.
+          </p>
+        </div>
+      </div>
+
+      <!-- KPIS DASHBOARD -->
+      <div class="grid-kpis">
+        <div class="kpi">
+          <span class="kpi-label">Temp. Actual</span>
+          <span id="kpiCurrent" class="kpi-val val-accent">--.- °C</span>
+          <span id="kpiLastId" class="kpi-sub">ID: ---</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Promedio Local</span>
+          <span id="kpiAvg" class="kpi-val">--.- °C</span>
+          <span class="kpi-sub">Muestras sesión</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Cuenta Regresiva</span>
+          <span id="kpiCountdown" class="kpi-val">-- s</span>
+          <span class="kpi-sub">Próximo ciclo</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Generadas</span>
+          <span id="kpiGen" class="kpi-val">0</span>
+          <span class="kpi-sub">Emitidas por HMI</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Confirmadas</span>
+          <span id="kpiConf" class="kpi-val val-ok">0</span>
+          <span class="kpi-sub">ACK Google Sheets</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Pendientes / Errores</span>
+          <span class="kpi-val"><span id="kpiPend" class="val-warn">0</span> / <span id="kpiErr" class="val-err">0</span></span>
+          <span class="kpi-sub">Cola / Fallidas</span>
+        </div>
+      </div>
+
+      <!-- GRÁFICA Y COLA SECUENCIAL -->
+      <div class="grid-main">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Tendencia Térmica en Tiempo Real (°C)</span>
+            <span style="font-family:var(--mono);font-size:0.75rem;color:var(--text-muted);">
+              ● Verde: Confirmada | ● Ámbar: Pendiente | ● Rojo: Error
+            </span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="trendCanvas"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Cola de Escritura & Bitácora de Estado</span>
+            <span id="workerBadge" style="font-family:var(--mono);font-size:0.74rem;color:var(--text-muted);">WORKER: INACTIVO</span>
+          </div>
+          <div id="queueList" class="queue-list">
+            <div style="color:var(--text-dim);font-size:0.82rem;padding:0.5rem;">
+              Sin registros en la sesión actual. Configure credenciales y presione «Iniciar».
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANÁLISIS OPENAI Y HISTORIAL SHEETS -->
+      <div class="grid-main">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Historial Consultado desde Google Sheets («Registros»)</span>
+            <span id="sheetsCountBadge" style="font-family:var(--mono);font-size:0.75rem;color:var(--accent);">0 FILAS</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>ID</th>
+                  <th>Zona</th>
+                  <th>Variable</th>
+                  <th>Valor</th>
+                  <th>Unidad</th>
+                  <th>Observación</th>
+                  <th>Origen</th>
+                </tr>
+              </thead>
+              <tbody id="sheetsTableBody">
+                <tr>
+                  <td colspan="8" style="color:var(--text-dim);text-align:center;padding:1.2rem;">
+                    Aún no se ha consultado la hoja «Registros».
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Diagnóstico IA (Datos Reales en Sheets)</span>
+            <span id="aiStatus" style="font-family:var(--mono);font-size:0.74rem;color:var(--text-muted);">EN ESPERA</span>
+          </div>
+          <div id="aiOutput" class="ai-output">Presione «Analizar con OpenAI» para que Google Apps Script lea los registros realmente persistidos en Google Sheets y solicite al modelo un diagnóstico basado exclusivamente en evidencia.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         PESTAÑA 2: CREAR ARTEFACTO (ARQUITECTURA + CODE.GS)
+         ========================================================= -->
+    <section id="tab-build" class="tab-panel">
+      <div class="doc-grid">
+        <div class="card doc-section">
+          <h2>1. Arquitectura e Intermediación (Apps Script)</h2>
+          <p>
+            Esta HMI opera como cliente desacoplado sobre <strong>GitHub Pages</strong> (archivos estáticos). Dado que un navegador no debe escribir directamente con credenciales OAuth de Google ni invocar la API de OpenAI exponiendo secretos en producción, <strong>Google Apps Script</strong> actúa como middleware REST:
+          </p>
+          <ul>
+            <li><strong>Idempotencia garantizada:</strong> Cada lectura generada en la HMI recibe un identificador único (<code>ID</code>). Si una petición se reintenta por latencia de red, <code>Code.gs</code> verifica si ese <code>ID</code> ya existe en la columna B de la hoja <strong>«Registros»</strong> antes de insertar.</li>
+            <li><strong>Cola secuencial sin bloqueos:</strong> El bucle de generación de <code>t</code> segundos (20–60 s) es estrictamente independiente de las peticiones HTTP. Las lecturas entran en una cola FIFO y un único <em>worker</em> envía una solicitud a la vez.</li>
+            <li><strong>Integridad visual:</strong> Ningún registro se marca como confirmado hasta recibir <code>{"status":"ok","confirmed":true}</code> desde el backend.</li>
+          </ul>
+
+          <h2>2. Estructura de Google Sheets</h2>
+          <p>El script crea automáticamente (mediante <code>setup()</code> o en la primera llamada) una pestaña llamada <strong>«Registros»</strong> con las 8 columnas exactas:</p>
+          <p style="font-family:var(--mono);font-size:0.8rem;background:var(--bg-input);padding:0.6rem;border-radius:6px;border:1px solid var(--border);">
+            Timestamp | ID | Zona | Variable | Valor | Unidad | Observación | Origen
+          </p>
+
+          <h2>3. Despliegue y Autorización en Google Apps Script</h2>
+          <ol>
+            <li>Cree una hoja de cálculo nueva en <strong>Google Sheets</strong> y abra <strong>Extensiones → Apps Script</strong>.</li>
+            <li>Pegue el código de <code>Code.gs</code> mostrado a la derecha y guarde el proyecto.</li>
+            <li>Seleccione la función <code>setup</code> en la barra superior y ejecútela una vez. Google solicitará permisos para gestionar hojas de cálculo y realizar peticiones externas (<code>UrlFetchApp</code>).</li>
+            <li>Haga clic en <strong>Implementar → Nueva implementación → Tipo: Aplicación web</strong>.</li>
+            <li>Configure <strong>Ejecutar como: Yo (su cuenta)</strong> y <strong>Quién tiene acceso: Cualquier usuario</strong>.</li>
+            <li>Copie la URL generada terminada en <code>/exec</code> y péguela en la pestaña «1. Demostración».</li>
+          </ol>
+
+          <div class="alert-box">
+            <strong>Riesgos de acceso público y recomendaciones de producción:</strong><br/>
+            Publicar una Web App como «Cualquier usuario» implica que cualquier persona que conozca la URL <code>/exec</code> puede enviar solicitudes POST. Para mitigar riesgos en producción:
+            <ul style="margin-top:0.4rem;margin-bottom:0;">
+              <li><strong>No envíe la API Key desde el navegador:</strong> Guárdela en Apps Script bajo <em>Configuración del proyecto → Propiedades de secuencia de comandos</em> (<code>OPENAI_API_KEY</code>) y léala con <code>PropertiesService.getScriptProperties().getProperty('OPENAI_API_KEY')</code>.</li>
+              <li>Agregue un <strong>token compartido de aplicación</strong> o valide identidad mediante Google Identity / OAuth2 antes de aceptar escrituras.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Backend Google Apps Script (Code.gs)</span>
+            <button id="btnCopyCode" class="btn">📋 Copiar Code.gs</button>
+          </div>
+          <pre id="codeGsBlock" class="code-box">/**
+ * T1 · HMI Data Logger Inteligente - Backend Google Apps Script (Code.gs)
+ * Intermediario entre la HMI estática, Google Sheets («Registros») y OpenAI.
+ */
+
+const SHEET_NAME = 'Registros';
+const HEADERS = [
+  'Timestamp',
+  'ID',
+  'Zona',
+  'Variable',
+  'Valor',
+  'Unidad',
+  'Observación',
+  'Origen'
+];
+
+/**
+ * Inicializa la hoja «Registros» con encabezados y formato base.
+ * Ejecutar manualmente una vez para autorizar permisos de Sheets y UrlFetchApp.
+ */
+function setup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
+  const firstRow = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  if (firstRow.join('') === '') {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    sheet.getRange(1, 1, 1, HEADERS.length)
+      .setFontWeight('bold')
+      .setBackground('#1e293b')
+      .setFontColor('#f8fafc');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Endpoint GET: permite consultar el historial almacenado en «Registros».
+ */
+function doGet(e) {
+  try {
+    const action = (e && e.parameter && e.parameter.action) || 'history';
+    if (action === 'history') {
+      const records = getStoredRecords_(50);
+      return jsonResponse_({
+        status: 'ok',
+        records: records,
+        total: records.length
+      });
+    }
+    return jsonResponse_({ status: 'error', message: 'Acción GET no soportada.' });
+  } catch (err) {
+    return jsonResponse_({ status: 'error', message: err.message });
+  }
+}
+
+/**
+ * Endpoint POST: recibe mediciones (con idempotencia) o solicita análisis con OpenAI.
+ * Nota: Se usa text/plain en fetch desde navegador para evitar preflight CORS complejo.
+ */
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return jsonResponse_({ status: 'error', message: 'Cuerpo POST vacío.' });
+    }
+
+    const payload = JSON.parse(e.postData.contents);
+    const action = payload.action || 'insert';
+
+    if (action === 'insert') {
+      lock.waitLock(15000);
+      const result = insertMeasurementIdempotent_(payload.record);
+      lock.releaseLock();
+      return jsonResponse_(result);
+    }
+
+    if (action === 'analyze') {
+      const analysis = analyzeStoredRecordsWithOpenAI_(payload.apiKey);
+      return jsonResponse_(analysis);
+    }
+
+    return jsonResponse_({ status: 'error', message: 'Acción POST no reconocida.' });
+  } catch (err) {
+    if (lock.hasLock()) lock.releaseLock();
+    return jsonResponse_({ status: 'error', message: err.message });
+  }
+}
+
+/**
+ * Inserta una medición verificando que su ID único no exista previamente (idempotencia).
+ */
+function insertMeasurementIdempotent_(rec) {
+  if (!rec || !rec.id || rec.valor === undefined || rec.valor === null) {
+    throw new Error('Registro incompleto: se requiere ID y Valor.');
+  }
+
+  const sheet = setup();
+  const lastRow = sheet.getLastRow();
+
+  // Verificar si el ID ya existe en columna B (índice 2)
+  if (lastRow >= 2) {
+    const existingIds = sheet.getRange(2, 2, lastRow - 1, 1).getValues().flat();
+    if (existingIds.indexOf(String(rec.id)) !== -1) {
+      return {
+        status: 'ok',
+        confirmed: true,
+        duplicate: true,
+        id: rec.id,
+        message: 'Registro ya confirmado previamente (idempotencia).'
+      };
+    }
+  }
+
+  const row = [
+    rec.timestamp || new Date().toISOString(),
+    String(rec.id),
+    rec.zona || 'Zona-T1',
+    rec.variable || 'Temperatura',
+    Number(rec.valor),
+    rec.unidad || '°C',
+    rec.observacion || 'Muestreo automático HMI',
+    rec.origen || 'HMI-Web-GitHubPages'
+  ];
+
+  sheet.appendRow(row);
+  SpreadsheetApp.flush();
+
+  return {
+    status: 'ok',
+    confirmed: true,
+    duplicate: false,
+    id: rec.id
+  };
+}
+
+/**
+ * Lee los últimos N registros realmente persistidos en Google Sheets.
+ */
+function getStoredRecords_(limit) {
+  const sheet = setup();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const totalDataRows = lastRow - 1;
+  const count = Math.min(totalDataRows, limit || 50);
+  const startRow = lastRow - count + 1;
+  const values = sheet.getRange(startRow, 1, count, HEADERS.length).getValues();
+
+  return values.map(function (r) {
+    return {
+      timestamp: r[0] instanceof Date ? r[0].toISOString() : String(r[0]),
+      id: String(r[1]),
+      zona: String(r[2]),
+      variable: String(r[3]),
+      valor: Number(r[4]),
+      unidad: String(r[5]),
+      observacion: String(r[6]),
+      origen: String(r[7])
+    };
+  });
+}
+
+/**
+ * Solicita a OpenAI analizar exclusivamente los registros almacenados en Sheets.
+ */
+function analyzeStoredRecordsWithOpenAI_(clientApiKey) {
+  // En producción, priorizar PropertiesService.getScriptProperties().getProperty('OPENAI_API_KEY')
+  const serverKey = PropertiesService.getScriptProperties().getProperty('OPENAI_API_KEY');
+  const apiKey = (serverKey && serverKey.trim()) ? serverKey.trim() : (clientApiKey || '').trim();
+
+  if (!apiKey) {
+    throw new Error('No se proporcionó API Key de OpenAI.');
+  }
+
+  const records = getStoredRecords_(60);
+  if (records.length === 0) {
+    throw new Error('La hoja «Registros» no contiene datos persistidos para analizar.');
+  }
+
+  const systemPrompt = [
+    'Eres un ingeniero especialista en instrumentación y análisis de telemetría industrial.',
+    'Analiza ÚNICAMENTE los registros reales entregados desde Google Sheets.',
+    'Reglas estrictas:',
+    '1. No inventes mediciones, fechas ni IDs que no estén en los datos.',
+    '2. Describe tendencias observadas (mínimo, máximo, promedio, estabilidad o derivas) y posibles anomalías.',
+    '3. Separa explícitamente el análisis en dos secciones claras: "HECHOS OBSERVADOS" y "RECOMENDACIONES OPERATIVAS".'
+  ].join('\n');
+
+  const userPrompt = 'Registros reales almacenados en Google Sheets (total ' + records.length + '):\n' +
+    JSON.stringify(records);
+
+  const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      Authorization: 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify({
+      model: 'gpt-4o-mini',
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    }),
+    muteHttpExceptions: true
+  });
+
+  const code = response.getResponseCode();
+  const body = JSON.parse(response.getContentText());
+
+  if (code < 200 || code >= 300) {
+    const errMsg = (body && body.error && body.error.message) ? body.error.message : ('HTTP ' + code);
+    throw new Error('Error OpenAI: ' + errMsg);
+  }
+
+  const text = body.choices && body.choices[0] && body.choices[0].message
+    ? body.choices[0].message.content
+    : 'Sin respuesta textual del modelo.';
+
+  return {
+    status: 'ok',
+    analyzedCount: records.length,
+    analysis: text
+  };
+}
+
+function jsonResponse_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =========================================================
+         ESTADO EN MEMORIA (SIN PERSISTENCIA DE CLAVES)
+         ========================================================= */
+      const state = {
+        running: false,
+        intervalSec: 20,
+        countdown: 20,
+        genTimerId: null,
+        tickTimerId: null,
+        samples: [],          // { id, timestamp, zona, variable, valor, unidad, observacion, origen, status: 'pending'|'confirmed'|'error', errorMsg? }
+        writeQueue: [],       // cola FIFO de objetos sample pendientes
+        workerBusy: false,
+        sheetsHistory: []
+      };
+
+      /* =========================================================
+         REFERENCIAS DOM
+         ========================================================= */
+      const els = {
+        tabs: document.querySelectorAll('.tab-btn'),
+        panels: document.querySelectorAll('.tab-panel'),
+        apiKeyInput: document.getElementById('apiKeyInput'),
+        scriptUrlInput: document.getElementById('scriptUrlInput'),
+        apiKeyMsg: document.getElementById('apiKeyMsg'),
+        urlMsg: document.getElementById('urlMsg'),
+        configStatusText: document.getElementById('configStatusText'),
+        intervalSlider: document.getElementById('intervalSlider'),
+        intervalLabel: document.getElementById('intervalLabel'),
+        btnStart: document.getElementById('btnStart'),
+        btnPause: document.getElementById('btnPause'),
+        btnSync: document.getElementById('btnSync'),
+        btnAnalyze: document.getElementById('btnAnalyze'),
+        badgeOp: document.getElementById('badgeOp'),
+        badgeConn: document.getElementById('badgeConn'),
+        badgeErr: document.getElementById('badgeErr'),
+        kpiCurrent: document.getElementById('kpiCurrent'),
+        kpiLastId: document.getElementById('kpiLastId'),
+        kpiAvg: document.getElementById('kpiAvg'),
+        kpiCountdown: document.getElementById('kpiCountdown'),
+        kpiGen: document.getElementById('kpiGen'),
+        kpiConf: document.getElementById('kpiConf'),
+        kpiPend: document.getElementById('kpiPend'),
+        kpiErr: document.getElementById('kpiErr'),
+        workerBadge: document.getElementById('workerBadge'),
+        queueList: document.getElementById('queueList'),
+        sheetsTableBody: document.getElementById('sheetsTableBody'),
+        sheetsCountBadge: document.getElementById('sheetsCountBadge'),
+        aiStatus: document.getElementById('aiStatus'),
+        aiOutput: document.getElementById('aiOutput'),
+        trendCanvas: document.getElementById('trendCanvas'),
+        btnCopyCode: document.getElementById('btnCopyCode'),
+        codeGsBlock: document.getElementById('codeGsBlock')
+      };
+
+      /* =========================================================
+         NAVEGACIÓN POR PESTAÑAS
+         ========================================================= */
+      els.tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          els.tabs.forEach(b => b.classList.remove('active'));
+          els.panels.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(btn.dataset.tab).classList.add('active');
+          if (btn.dataset.tab === 'tab-demo') drawChart();
+        });
+      });
+
+      /* =========================================================
+         VALIDACIÓN DE CONFIGURACIÓN OBLIGATORIA
+         ========================================================= */
+      function isValidAppsScriptUrl(raw) {
+        try {
+          const u = new URL(raw.trim());
+          return u.protocol === 'https:' &&
+                 u.hostname === 'script.google.com' &&
+                 u.pathname.endsWith('/exec');
+        } catch {
+          return false;
+        }
+      }
+
+      function isValidApiKey(raw) {
+        const v = raw.trim();
+        return v.startsWith('sk-') && v.length >= 20;
+      }
+
+      function validateConfig() {
+        const keyOk = isValidApiKey(els.apiKeyInput.value);
+        const urlOk = isValidAppsScriptUrl(els.scriptUrlInput.value);
+
+        els.apiKeyMsg.textContent = keyOk
+          ? '✓ Formato de API Key válido en memoria.'
+          : '✗ Ingrese una API Key de OpenAI válida (sk-...).';
+        els.apiKeyMsg.style.color = keyOk ? 'var(--ok)' : 'var(--warn)';
+
+        els.urlMsg.textContent = urlOk
+          ? '✓ Endpoint /exec HTTPS validado.'
+          : '✗ Debe ser https://script.google.com/.../exec';
+        els.urlMsg.style.color = urlOk ? 'var(--ok)' : 'var(--warn)';
+
+        const allOk = keyOk && urlOk;
+
+        els.configStatusText.textContent = allOk ? 'HABILITADO' : 'BLOQUEADO';
+        els.configStatusText.style.color = allOk ? 'var(--ok)' : 'var(--warn)';
+
+        els.btnStart.disabled = !allOk || state.running;
+        els.btnPause.disabled = !state.running;
+        els.btnSync.disabled = !allOk;
+        els.btnAnalyze.disabled = !allOk;
+
+        if (!allOk && state.running) {
+          pauseAcquisition();
+        }
+
+        setBadge(els.badgeConn, allOk ? 'ok' : 'warn', allOk ? 'ENLACE LISTO' : 'CONFIG INCOMPLETA');
+        return allOk;
+      }
+
+      els.apiKeyInput.addEventListener('input', validateConfig);
+      els.scriptUrlInput.addEventListener('input', validateConfig);
+
+      /* =========================================================
+         CONTROL DE INTERVALO Y GENERACIÓN INDEPENDIENTE
+         ========================================================= */
+      els.intervalSlider.addEventListener('input', () => {
+        state.intervalSec = Number(els.intervalSlider.value);
+        els.intervalLabel.textContent = state.intervalSec;
+        if (!state.running) {
+          state.countdown = state.intervalSec;
+          els.kpiCountdown.textContent = `${state.countdown} s`;
+        }
+      });
+
+      function generateUniqueId() {
+        const ts = Date.now().toString(36).toUpperCase();
+        const rnd = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `T1-${ts}-${rnd}`;
+      }
+
+      function generateTemperature() {
+        // Aleatorio entre 20.0 y 40.0 °C con exactamente 1 decimal
+        const raw = 20 + Math.random() * 20;
+        return Math.round(raw * 10) / 10;
+      }
+
+      function classifyObservation(temp) {
+        if (temp >= 36.0) return 'Alerta térmica alta (>=36 °C)';
+        if (temp <= 22.0) return 'Banda térmica baja (<=22 °C)';
+        return 'Operación térmica nominal';
+      }
+
+      function emitSample() {
+        const temp = generateTemperature();
+        const sample = {
+          id: generateUniqueId(),
+          timestamp: new Date().toISOString(),
+          zona: 'Zona-T1',
+          variable: 'Temperatura',
+          valor: temp,
+          unidad: '°C',
+          observacion: classifyObservation(temp),
+          origen: 'HMI-Auto-Logger',
+          status: 'pending',
+          errorMsg: ''
+        };
+
+        // Mostrar inmediatamente en HMI y encolar sin esperar respuesta de Sheets
+        state.samples.push(sample);
+        state.writeQueue.push(sample);
+
+        els.kpiCurrent.textContent = `${temp.toFixed(1)} °C`;
+        els.kpiLastId.textContent = `ID: ${sample.id}`;
+
+        updateDashboardUI();
+        processQueueSequentially();
+      }
+
+      function startAcquisition() {
+        if (!validateConfig() || state.running) return;
+        state.running = true;
+        state.countdown = state.intervalSec;
+
+        setBadge(els.badgeOp, 'ok', 'EN EJECUCIÓN');
+        validateConfig();
+
+        // Primera muestra inmediata al iniciar, luego cada t segundos exactos
+        emitSample();
+
+        state.tickTimerId = setInterval(() => {
+          state.countdown -= 1;
+          if (state.countdown <= 0) {
+            state.countdown = state.intervalSec;
+            emitSample();
+          }
+          els.kpiCountdown.textContent = `${state.countdown} s`;
+        }, 1000);
+      }
+
+      function pauseAcquisition() {
+        state.running = false;
+        clearInterval(state.tickTimerId);
+        state.tickTimerId = null;
+        setBadge(els.badgeOp, 'warn', 'PAUSADO');
+        els.kpiCountdown.textContent = '-- s';
+        validateConfig();
+      }
+
+      els.btnStart.addEventListener('click', startAcquisition);
+      els.btnPause.addEventListener('click', pauseAcquisition);
+
+      /* =========================================================
+         COLA SECUENCIAL FIFO (SIN SOLICITUDES SIMULTÁNEAS)
+         ========================================================= */
+      async function processQueueSequentially() {
+        if (state.workerBusy || state.writeQueue.length === 0) return;
+        if (!isValidAppsScriptUrl(els.scriptUrlInput.value)) return;
+
+        state.workerBusy = true;
+        els.workerBadge.textContent = 'WORKER: ENVIANDO...';
+        els.workerBadge.style.color = 'var(--accent)';
+
+        const url = els.scriptUrlInput.value.trim();
+
+        while (state.writeQueue.length > 0) {
+          const item = state.writeQueue[0]; // peek sin sacar hasta terminar intento
+          try {
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({
+                action: 'insert',
+                record: {
+                  id: item.id,
+                  timestamp: item.timestamp,
+                  zona: item.zona,
+                  variable: item.variable,
+                  valor: item.valor,
+                  unidad: item.unidad,
+                  observacion: item.observacion,
+                  origen: item.origen
+                }
+              })
+            });
+
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status}`);
+            }
+
+            const data = await resp.json();
+            if (data.status === 'ok' && data.confirmed === true) {
+              item.status = 'confirmed';
+              setBadge(els.badgeConn, 'ok', 'SHEETS CONECTADO');
+            } else {
+              throw new Error(data.message || 'Respuesta sin confirmación de escritura.');
+            }
+          } catch (err) {
+            // Nunca presentar registros fallidos como guardados
+            item.status = 'error';
+            item.errorMsg = err.message || 'Fallo de red';
+            setBadge(els.badgeConn, 'err', 'ERROR DE ESCRITURA');
+          } finally {
+            state.writeQueue.shift();
+            updateDashboardUI();
+          }
+        }
+
+        state.workerBusy = false;
+        els.workerBadge.textContent = 'WORKER: EN ESPERA';
+        els.workerBadge.style.color = 'var(--text-muted)';
+      }
+
+      /* =========================================================
+         CONSULTA DE HISTORIAL REAL EN GOOGLE SHEETS
+         ========================================================= */
+      async function fetchSheetsHistory() {
+        if (!validateConfig()) return;
+        const url = `${els.scriptUrlInput.value.trim()}?action=history`;
+        els.btnSync.disabled = true;
+        els.btnSync.textContent = '↻ Consultando...';
+
+        try {
+          const resp = await fetch(url, { method: 'GET' });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+          if (data.status !== 'ok') throw new Error(data.message || 'Error leyendo historial.');
+
+          state.sheetsHistory = Array.isArray(data.records) ? data.records : [];
+          renderSheetsTable();
+          setBadge(els.badgeConn, 'ok', 'SHEETS SINCRONIZADO');
+        } catch (err) {
+          setBadge(els.badgeConn, 'err', 'ERROR CONSULTA');
+          els.sheetsTableBody.innerHTML = `
+            <tr><td colspan="8" style="color:var(--err);padding:1rem;">
+              Error consultando Google Sheets: ${escapeHtml(err.message)}
+            </td></tr>`;
+        } finally {
+          els.btnSync.disabled = false;
+          els.btnSync.textContent = '↻ Consultar Sheets';
+        }
+      }
+
+      els.btnSync.addEventListener('click', fetchSheetsHistory);
+
+      function renderSheetsTable() {
+        const rows = state.sheetsHistory;
+        els.sheetsCountBadge.textContent = `${rows.length} FILAS`;
+
+        if (rows.length === 0) {
+          els.sheetsTableBody.innerHTML = `
+            <tr><td colspan="8" style="color:var(--text-dim);text-align:center;padding:1rem;">
+              La hoja «Registros» aún no tiene filas almacenadas.
+            </td></tr>`;
+          return;
+        }
+
+        const reversed = [...rows].reverse();
+        els.sheetsTableBody.innerHTML = reversed.map(r => `
+          <tr>
+            <td>${escapeHtml(r.timestamp)}</td>
+            <td style="color:var(--accent);">${escapeHtml(r.id)}</td>
+            <td>${escapeHtml(r.zona)}</td>
+            <td>${escapeHtml(r.variable)}</td>
+            <td style="font-weight:700;">${Number(r.valor).toFixed(1)}</td>
+            <td>${escapeHtml(r.unidad)}</td>
+            <td>${escapeHtml(r.observacion)}</td>
+            <td>${escapeHtml(r.origen)}</td>
+          </tr>
+        `).join('');
+      }
+
+      /* =========================================================
+         ANÁLISIS CON OPENAI VÍA APPS SCRIPT
+         ========================================================= */
+      async function requestOpenAIAnalysis() {
+        if (!validateConfig()) return;
+        const url = els.scriptUrlInput.value.trim();
+        const apiKey = els.apiKeyInput.value.trim();
+
+        els.btnAnalyze.disabled = true;
+        els.aiStatus.textContent = 'ANALIZANDO REGISTROS REALES...';
+        els.aiStatus.style.color = 'var(--accent)';
+        els.aiOutput.textContent = 'Solicitando a Google Apps Script la lectura de «Registros» y el análisis con OpenAI...';
+
+        try {
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'analyze',
+              apiKey: apiKey
+            })
+          });
+
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+
+          if (data.status !== 'ok') {
+            throw new Error(data.message || 'No se pudo completar el análisis.');
+          }
+
+          els.aiStatus.textContent = `COMPLETADO (${data.analyzedCount} FILAS)`;
+          els.aiStatus.style.color = 'var(--ok)';
+          els.aiOutput.textContent = data.analysis;
+
+          // Refrescar tabla local para garantizar sincronía visual
+          await fetchSheetsHistory();
+        } catch (err) {
+          els.aiStatus.textContent = 'ERROR EN ANÁLISIS';
+          els.aiStatus.style.color = 'var(--err)';
+          els.aiOutput.textContent = `Error al solicitar análisis a Apps Script / OpenAI:\n${err.message}`;
+        } finally {
+          validateConfig();
+        }
+      }
+
+      els.btnAnalyze.addEventListener('click', requestOpenAIAnalysis);
+
+      /* =========================================================
+         ACTUALIZACIÓN DE DASHBOARD, COLA Y GRÁFICA CANVAS
+         ========================================================= */
+      function updateDashboardUI() {
+        const total = state.samples.length;
+        const confirmed = state.samples.filter(s => s.status === 'confirmed').length;
+        const pending = state.samples.filter(s => s.status === 'pending').length;
+        const errors = state.samples.filter(s => s.status === 'error').length;
+
+        els.kpiGen.textContent = total;
+        els.kpiConf.textContent = confirmed;
+        els.kpiPend.textContent = pending;
+        els.kpiErr.textContent = errors;
+
+        if (total > 0) {
+          const sum = state.samples.reduce((acc, s) => acc + s.valor, 0);
+          els.kpiAvg.textContent = `${(sum / total).toFixed(1)} °C`;
+        }
+
+        if (errors > 0) {
+          setBadge(els.badgeErr, 'err', `${errors} ERROR${errors > 1 ? 'ES' : ''}`);
+        } else {
+          setBadge(els.badgeErr, 'ok', '0 ERRORES');
+        }
+
+        renderQueueList();
+        drawChart();
+      }
+
+      function renderQueueList() {
+        if (state.samples.length === 0) return;
+        const recent = [...state.samples].reverse().slice(0, 25);
+
+        els.queueList.innerHTML = recent.map(s => {
+          let tag = '';
+          if (s.status === 'confirmed') {
+            tag = `<span class="badge ok"><span class="dot"></span>CONFIRMADO</span>`;
+          } else if (s.status === 'pending') {
+            tag = `<span class="badge warn"><span class="dot"></span>PENDIENTE EN COLA</span>`;
+          } else {
+            tag = `<span class="badge err" title="${escapeHtml(s.errorMsg)}"><span class="dot"></span>FALLIDO (${escapeHtml(s.errorMsg)})</span>`;
+          }
+
+          return `
+            <div class="queue-item">
+              <div>
+                <strong>${s.valor.toFixed(1)} °C</strong> · <span style="color:var(--text-muted);">${s.id}</span>
+                <div style="font-size:0.7rem;color:var(--text-dim);">${s.timestamp}</div>
+              </div>
+              ${tag}
+            </div>
+          `;
+        }).join('');
+      }
+
+      function drawChart() {
+        const canvas = els.trendCanvas;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        const w = rect.width;
+        const h = rect.height;
+        const padL = 44, padR = 16, padT = 18, padB = 26;
+        const plotW = w - padL - padR;
+        const plotH = h - padT - padB;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Rejilla Y (20 °C a 40 °C)
+        ctx.font = '11px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        [20, 25, 30, 35, 40].forEach(val => {
+          const y = padT + plotH - ((val - 20) / 20) * plotH;
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(padL, y);
+          ctx.lineTo(w - padR, y);
+          ctx.stroke();
+
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(`${val}°`, padL - 6, y);
+        });
+
+        const pts = state.samples.slice(-30);
+        if (pts.length === 0) {
+          ctx.fillStyle = '#64748b';
+          ctx.textAlign = 'center';
+          ctx.fillText('Esperando muestras automáticas (20.0 – 40.0 °C)...', w / 2, h / 2);
+          return;
+        }
+
+        const stepX = pts.length > 1 ? plotW / (pts.length - 1) : 0;
+
+        // Línea de tendencia
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+          const x = padL + (pts.length === 1 ? plotW / 2 : i * stepX);
+          const y = padT + plotH - ((p.valor - 20) / 20) * plotH;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Puntos diferenciados por estado
+        pts.forEach((p, i) => {
+          const x = padL + (pts.length === 1 ? plotW / 2 : i * stepX);
+          const y = padT + plotH - ((p.valor - 20) / 20) * plotH;
+
+          ctx.fillStyle = p.status === 'confirmed'
+            ? '#10b981'
+            : (p.status === 'pending' ? '#f59e0b' : '#ef4444');
+
+          ctx.beginPath();
+          ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      window.addEventListener('resize', drawChart);
+
+      /* =========================================================
+         UTILIDADES
+         ========================================================= */
+      function setBadge(el, type, text) {
+        el.className = `badge ${type}`;
+        el.innerHTML = `<span class="dot"></span>${escapeHtml(text)}`;
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      els.btnCopyCode.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(els.codeGsBlock.textContent);
+          els.btnCopyCode.textContent = '✓ Copiado';
+          setTimeout(() => { els.btnCopyCode.textContent = '📋 Copiar Code.gs'; }, 2000);
+        } catch {
+          els.btnCopyCode.textContent = 'Error al copiar';
+        }
+      });
+
+      // Inicialización visual
+      validateConfig();
+      drawChart();
+    })();
+  </script>
+</body>
+</html>
